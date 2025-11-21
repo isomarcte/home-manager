@@ -29,6 +29,12 @@ in
       example = lib.literalExpression "pkgs.nixVersions.unstable";
       description = "Which nix package to use.";
     };
+
+    extraEnvVariables = lib.mkOption {
+      type = lib.types.attrsOf lib.types.str;
+      default = {};
+      description = "Extra environment variables to pass to the daemon.";
+    };
   };
 
   config = lib.mkIf cfg.enable (
@@ -42,99 +48,103 @@ in
           gzip
         ];
     in
-    lib.mkMerge [
-      {
-        home.packages = [ cfg.package ];
-      }
-      (lib.mkIf pkgs.stdenv.isDarwin {
-        warnings =
-          if cfg.enableNotifications then
-            [
-              "services.lorri.enableNotifications is not currently supported for Darwin."
-            ]
-          else
-            [ ];
-        launchd.agents.lorri = {
-          enable = true;
-          config = {
-            ProgramArguments = [
-              "${cfg.package}/bin/lorri"
-              "daemon"
-            ];
-
-            EnvironmentVariables = {
-              PATH = "${path}";
-            };
-
-            RunAtLoad = true;
-            KeepAlive = {
-              Crashed = true;
-              SuccessfulExit = false;
-            };
-          };
-        };
-      })
-      (lib.mkIf pkgs.stdenv.isLinux {
-        systemd.user = {
-          services.lorri = {
-            Unit = {
-              Description = "lorri build daemon";
-              Requires = "lorri.socket";
-              After = "lorri.socket";
-              RefuseManualStart = true;
-            };
-
-            Service = {
-              ExecStart = "${cfg.package}/bin/lorri daemon";
-              PrivateTmp = true;
-              ProtectSystem = "strict";
-              ProtectHome = "read-only";
-              ReadWritePaths = [
-                # /run/user/1000 for the socket
-                "%t"
-                # Needs to update own cache
-                "%C/lorri"
-                # Needs %C/nix/fetcher-cache-v1.sqlite
-                "%C/nix"
+      lib.mkMerge [
+        {
+          home.packages = [ cfg.package ];
+        }
+        (lib.mkIf pkgs.stdenv.isDarwin {
+          warnings =
+            if cfg.enableNotifications then
+              [
+                "services.lorri.enableNotifications is not currently supported for Darwin."
+              ]
+            else
+              [ ];
+          launchd.agents.lorri = {
+            enable = true;
+            config = {
+              ProgramArguments = [
+                "${cfg.package}/bin/lorri"
+                "daemon"
               ];
-              CacheDirectory = [ "lorri" ];
-              Restart = "on-failure";
-              Environment = [ "PATH=${path}" ];
+
+              EnvironmentVariables = {
+                PATH = "${path}";
+              } // cfg.extraEnvVariables;
+
+              RunAtLoad = true;
+              KeepAlive = {
+                Crashed = true;
+                SuccessfulExit = false;
+              };
             };
           };
+        })
+        (lib.mkIf pkgs.stdenv.isLinux
+          (let
+            extraEnvList = lib.foldlAttrs (acc: k: v: ["${k}=${v}"] ++ acc) [] cfg.extraEnvVariables;
+          in
+            {
+              systemd.user = {
+                services.lorri = {
+                  Unit = {
+                    Description = "lorri build daemon";
+                    Requires = "lorri.socket";
+                    After = "lorri.socket";
+                    RefuseManualStart = true;
+                  };
 
-          sockets.lorri = {
-            Unit = {
-              Description = "Socket for lorri build daemon";
-            };
+                  Service = {
+                    ExecStart = "${cfg.package}/bin/lorri daemon";
+                    PrivateTmp = true;
+                    ProtectSystem = "strict";
+                    ProtectHome = "read-only";
+                    ReadWritePaths = [
+                      # /run/user/1000 for the socket
+                      "%t"
+                      # Needs to update own cache
+                      "%C/lorri"
+                      # Needs %C/nix/fetcher-cache-v1.sqlite
+                      "%C/nix"
+                    ];
+                    CacheDirectory = [ "lorri" ];
+                    Restart = "on-failure";
+                    Environment = [ "PATH=${path}" ];
+                  };
+                };
 
-            Socket = {
-              ListenStream = "%t/lorri/daemon.socket";
-              RuntimeDirectory = "lorri";
-            };
+                sockets.lorri = {
+                  Unit = {
+                    Description = "Socket for lorri build daemon";
+                  };
 
-            Install = {
-              WantedBy = [ "sockets.target" ];
-            };
-          };
+                  Socket = {
+                    ListenStream = "%t/lorri/daemon.socket";
+                    RuntimeDirectory = "lorri";
+                  };
 
-          services.lorri-notify = lib.mkIf cfg.enableNotifications {
-            Unit = {
-              Description = "lorri build notifications";
-              After = "lorri.service";
-              Requires = "lorri.service";
-            };
+                  Install = {
+                    WantedBy = [ "sockets.target" ];
+                  };
+                };
 
-            Service = {
-              # Don't start until lorri daemon is actually running
-              ExecStartPre = pkgs.writeShellScript "lorri-notify-check" ''
+                services.lorri-notify = lib.mkIf cfg.enableNotifications {
+                  Unit = {
+                    Description = "lorri build notifications";
+                    After = "lorri.service";
+                    Requires = "lorri.service";
+                  };
+
+                  Service = {
+                    # Don't start until lorri daemon is actually running
+                    ExecStartPre = pkgs.writeShellScript "lorri-notify-check" ''
                 lorri info --shell-file . | grep 'Lorri Daemon Status:.*running'
               '';
-              RestartSec = "5s";
+                    RestartSec = "5s";
 
-              ExecStart =
-                let
-                  jqFile = ''
+                    ExecStart =
+                      let
+                        jqFile = ''
                     (
                       (.Started?   | values | ["Build starting", .nix_file, "emblem-synchronizing"]),
                       (.Completed? | values | ["Build complete", .nix_file, "checkmark"]),
@@ -143,7 +153,7 @@ in
                     | @tsv
                   '';
 
-                  notifyScript = pkgs.writeShellScript "lorri-notify" ''
+                        notifyScript = pkgs.writeShellScript "lorri-notify" ''
                     set -o pipefail
                     lorri internal stream-events --kind live \
                       | jq --unbuffered -r '${jqFile}' \
@@ -152,31 +162,31 @@ in
                             --icon "$icon" "$status" "$nixFile"
                         done
                   '';
-                in
-                toString notifyScript;
-              Restart = "on-failure";
-              Environment =
-                let
-                  path = lib.makeSearchPath "bin" (
-                    with pkgs;
-                    [
-                      bash
-                      gnugrep
-                      jq
-                      libnotify
-                      cfg.package
-                    ]
-                  );
-                in
-                "PATH=${path}";
-            };
+                      in
+                        toString notifyScript;
+                    Restart = "on-failure";
+                    Environment =
+                      let
+                        path = lib.makeSearchPath "bin" (
+                          with pkgs;
+                          [
+                            bash
+                            gnugrep
+                            jq
+                            libnotify
+                            cfg.package
+                          ]
+                        );
+                      in
+                        "PATH=${path}" ++ extraEnvList;
+                  };
 
-            Install = {
-              WantedBy = [ "lorri.service" ];
-            };
-          };
-        };
-      })
-    ]
+                  Install = {
+                    WantedBy = [ "lorri.service" ];
+                  };
+                };
+              };
+            }))
+      ]
   );
 }
