@@ -348,7 +348,7 @@ in
         makeWrapperArgs = lib.flatten (
           lib.filter (x: x != [ ]) [
             (lib.optional (cfg.mcpServers != { }) [
-              "--add-flags"
+              "--append-flags"
               "--mcp-config ${jsonFormat.generate "claude-code-mcp-config.json" { inherit (cfg) mcpServers; }}"
             ])
           ]
