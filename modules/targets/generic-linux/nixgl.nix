@@ -211,7 +211,7 @@ in
 
       makePackageWrapper =
         vendor: environment: pkg:
-        if builtins.isNull cfg.packages then
+        if isNull cfg.packages then
           pkg
         else
           # Wrap the package's binaries with nixGL, while preserving the rest of
@@ -272,6 +272,26 @@ in
                   src="$(readlink "$dsk")"
                   rm "$dsk"
                   sed "s|${pkg.out}|$out|g" "$src" > "$dsk"
+                done
+
+                # Patch systemd user services
+                for svc in "$out/share/systemd/user"/*.service ; do
+                  if ! grep -q "${pkg.out}" "$svc"; then
+                    continue
+                  fi
+                  src="$(readlink "$svc")"
+                  rm "$svc"
+                  sed "s|${pkg.out}|$out|g" "$src" > "$svc"
+                done
+
+                # Patch DBus services
+                for svc in "$out/share/dbus-1/services"/*.service ; do
+                  if ! grep -q "${pkg.out}" "$svc"; then
+                    continue
+                  fi
+                  src="$(readlink "$svc")"
+                  rm "$svc"
+                  sed "s|${pkg.out}|$out|g" "$src" > "$svc"
                 done
 
                 shopt -u nullglob # Revert nullglob back to its normal default state

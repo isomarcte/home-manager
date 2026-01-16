@@ -67,12 +67,6 @@
     github = "aheaume";
     githubId = 13830042;
   };
-  aionescu = {
-    name = "Alex Ionescu";
-    email = "github@ionescu.sh";
-    github = "aionescu";
-    githubId = 48064242;
-  };
   austreelis = {
     email = "github@accounts.austreelis.net";
     github = "Austreelis";
@@ -175,6 +169,12 @@
     github = "exzombie";
     githubId = 11456290;
   };
+  farberbrodsky = {
+    name = "Michael Farber Brodsky";
+    email = "misha@farberbrodsky.com";
+    github = "farberbrodsky";
+    githubId = 36243759;
+  };
   fendse = {
     email = "46252070+Fendse@users.noreply.github.com";
     github = "Fendse";
@@ -214,14 +214,6 @@
     github = "henrisota";
     githubId = 56848082;
     name = "Henri Sota";
-  };
-  hey2022 = {
-    name = "Yiheng He";
-    email = "yiheng.he@proton.me";
-    matrix = "@hey2022:matrix.org";
-    github = "hey2022";
-    githubId = 48553457;
-    keys = [ { fingerprint = "128E 09C0 6F73 D678 6BB5  E551 5EA5 3C75 F7BE 3EDE"; } ];
   };
   HPsaucii = {
     name = "Holly Powell";
@@ -423,12 +415,6 @@
     github = "natecox";
     githubId = 2782695;
   };
-  nickthegroot = {
-    name = "Nick DeGroot";
-    email = "nick@nickthegroot.com";
-    github = "nickthegroot";
-    githubId = 1966472;
-  };
   nikp123 = {
     name = "nikp123";
     email = "nikp123@users.noreply.github.com";
@@ -506,12 +492,6 @@
     email = "RosarioPulella@gmail.com";
     github = "Rosuavio";
     githubId = 7164552;
-  };
-  rrvsh = {
-    name = "Mohammad Rafiq";
-    email = "rafiq@rrv.sh";
-    github = "rrvsh";
-    githubId = 20300874;
   };
   rszamszur = {
     name = "Radosław Szamszur";

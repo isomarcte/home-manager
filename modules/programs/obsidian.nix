@@ -19,6 +19,7 @@ let
   corePlugins = [
     "audio-recorder"
     "backlink"
+    "bases"
     "bookmarks"
     "canvas"
     "command-palette"
@@ -84,6 +85,7 @@ in
         type = types.raw;
         default = [
           "backlink"
+          "bases"
           "bookmarks"
           "canvas"
           "command-palette"
@@ -254,7 +256,7 @@ in
                 cssSnippets =
                   let
                     checkCssPath = path: lib.filesystem.pathIsRegularFile path && lib.strings.hasSuffix ".css" path;
-                    toCssName = path: lib.strings.removeSuffix ".css" (builtins.baseNameOf path);
+                    toCssName = path: lib.strings.removeSuffix ".css" (baseNameOf path);
                     cssSnippetsOptions =
                       { config, ... }:
                       {
@@ -423,7 +425,7 @@ in
                   source = (pkgs.formats.json { }).generate "appearance.json" (
                     vault.settings.appearance
                     // {
-                      enabledCssSnippets = builtins.map (snippet: snippet.name) enabledCssSnippets;
+                      enabledCssSnippets = map (snippet: snippet.name) enabledCssSnippets;
                     }
                     // lib.attrsets.optionalAttrs (activeTheme != null) {
                       cssTheme = getManifest activeTheme;
@@ -438,14 +440,8 @@ in
                 {
                   name = "${vault.target}/.obsidian/core-plugins.json";
                   value.source = (pkgs.formats.json { }).generate "core-plugins.json" (
-                    builtins.map (plugin: plugin.name) vault.settings.corePlugins
-                  );
-                }
-                {
-                  name = "${vault.target}/.obsidian/core-plugins-migration.json";
-                  value.source = (pkgs.formats.json { }).generate "core-plugins-migration.json" (
                     builtins.listToAttrs (
-                      builtins.map (name: {
+                      map (name: {
                         inherit name;
                         value = builtins.any (plugin: name == plugin.name && plugin.enable) vault.settings.corePlugins;
                       }) corePlugins
@@ -453,7 +449,7 @@ in
                   );
                 }
               ]
-              ++ builtins.map (plugin: {
+              ++ map (plugin: {
                 name = "${vault.target}/.obsidian/${plugin.name}.json";
                 value.source = (pkgs.formats.json { }).generate "${plugin.name}.json" plugin.settings;
               }) (builtins.filter (plugin: plugin.settings != { }) vault.settings.corePlugins);
@@ -464,25 +460,25 @@ in
                 {
                   name = "${vault.target}/.obsidian/community-plugins.json";
                   value.source = (pkgs.formats.json { }).generate "community-plugins.json" (
-                    builtins.map getManifest (builtins.filter (plugin: plugin.enable) vault.settings.communityPlugins)
+                    map getManifest (builtins.filter (plugin: plugin.enable) vault.settings.communityPlugins)
                   );
                 }
               ]
-              ++ builtins.map (plugin: {
+              ++ map (plugin: {
                 name = "${vault.target}/.obsidian/plugins/${getManifest plugin}";
                 value = {
                   source = plugin.pkg;
                   recursive = true;
                 };
               }) vault.settings.communityPlugins
-              ++ builtins.map (plugin: {
+              ++ map (plugin: {
                 name = "${vault.target}/.obsidian/plugins/${getManifest plugin}/data.json";
                 value.source = (pkgs.formats.json { }).generate "data.json" plugin.settings;
               }) (builtins.filter (plugin: plugin.settings != { }) vault.settings.communityPlugins);
 
             mkCssSnippets =
               vault:
-              builtins.map (snippet: {
+              map (snippet: {
                 name = "${vault.target}/.obsidian/snippets/${snippet.name}.css";
                 value =
                   if snippet.source != null then
@@ -497,7 +493,7 @@ in
 
             mkThemes =
               vault:
-              builtins.map (theme: {
+              map (theme: {
                 name = "${vault.target}/.obsidian/themes/${getManifest theme}";
                 value.source = theme.pkg;
               }) vault.settings.themes;
@@ -509,7 +505,7 @@ in
 
             mkExtraFiles =
               vault:
-              builtins.map (file: {
+              map (file: {
                 name = "${vault.target}/.obsidian/${file.target}";
                 value =
                   if file.source != null then
@@ -524,7 +520,7 @@ in
           in
           builtins.listToAttrs (
             lib.lists.flatten (
-              builtins.map (vault: [
+              map (vault: [
                 (mkApp vault)
                 (mkAppearance vault)
                 (mkCorePlugins vault)
@@ -536,21 +532,32 @@ in
               ]) vaults
             )
           );
-      };
 
-      xdg.configFile."obsidian/obsidian.json".source = (pkgs.formats.json { }).generate "obsidian.json" {
-        vaults = builtins.listToAttrs (
-          builtins.map (vault: {
-            name = builtins.hashString "md5" vault.target;
-            value = {
-              path = "${config.home.homeDirectory}/${vault.target}";
-            }
-            // (lib.attrsets.optionalAttrs ((builtins.length vaults) == 1) {
-              open = true;
-            });
-          }) vaults
-        );
-        updateDisabled = true;
+        activation.obsidian =
+          let
+            template = (pkgs.formats.json { }).generate "obsidian.json" {
+              vaults = builtins.listToAttrs (
+                map (vault: {
+                  name = builtins.substring 0 16 (builtins.hashString "md5" vault.target);
+                  value = {
+                    path = "${config.home.homeDirectory}/${vault.target}";
+                  };
+                }) vaults
+              );
+              updateDisabled = true;
+            };
+          in
+          lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+            OBSIDIAN_CONFIG="$HOME/.config/obsidian/obsidian.json"
+            if [ -f "$OBSIDIAN_CONFIG" ]; then
+              tmp=$(mktemp)
+              ${lib.getExe pkgs.jq} -s '.[0] * .[1]' "$OBSIDIAN_CONFIG" "${template}" > "$tmp"
+              install -m644 "$tmp" "$OBSIDIAN_CONFIG"
+              rm -f "$tmp"
+            else
+              install -m644 ${template} "$OBSIDIAN_CONFIG"
+            fi
+          '';
       };
 
       assertions = [

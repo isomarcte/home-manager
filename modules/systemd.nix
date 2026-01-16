@@ -75,7 +75,7 @@ let
   buildServices =
     style: serviceCfgs: lib.concatLists (lib.mapAttrsToList (buildService style) serviceCfgs);
 
-  servicesStartTimeoutMs = builtins.toString cfg.servicesStartTimeoutMs;
+  servicesStartTimeoutMs = toString cfg.servicesStartTimeoutMs;
 
   unitBaseType =
     unitKind: mod:
@@ -246,6 +246,20 @@ in
           Absolute path to the {command}`systemctl` tool. This
           option may need to be set if running Home Manager on a
           non-NixOS distribution.
+        '';
+      };
+
+      packages = mkOption {
+        type = with types; listOf package;
+        default = [ ];
+        description = ''
+          Packages providing systemd user units.
+
+          This is the Home Manager equivalent of NixOS’s `systemd.packages`
+          option.
+
+          Files in {file}`«pkg»/share/systemd/user` will be included in the
+          user’s {file}`$XDG_DATA_HOME/systemd/user` directory.
         '';
       };
 
@@ -430,10 +444,7 @@ in
   # Do not install any user services if username is root.
   config = mkIf (cfg.enable && config.home.username != "root") {
     assertions = [
-      {
-        assertion = pkgs.stdenv.isLinux;
-        message = "This module is only available on Linux.";
-      }
+      (lib.hm.assertions.assertPlatform "systemd" pkgs lib.platforms.linux)
     ];
 
     xdg.configFile = mkMerge [
@@ -452,6 +463,17 @@ in
 
       settings
     ];
+
+    xdg.dataFile = lib.mkIf (cfg.packages != [ ]) {
+      "systemd/user" = {
+        recursive = true;
+        source = pkgs.symlinkJoin {
+          name = "user-systemd-units";
+          paths = cfg.packages;
+          stripPrefix = "/share/systemd/user";
+        };
+      };
+    };
 
     # Run systemd service reload if user is logged in. If we're
     # running this from the NixOS module then XDG_RUNTIME_DIR is not
