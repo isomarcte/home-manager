@@ -969,6 +969,19 @@
     name = "Donovan Glover";
     source = "nixpkgs";
   };
+  drupol = {
+    email = "pol.dellaiera@protonmail.com";
+    github = "drupol";
+    githubId = 252042;
+    keys = [
+      {
+        fingerprint = "85F3 72DF 4AF3 EF13 ED34  72A3 0AAF 2901 E804 0715";
+      }
+    ];
+    matrix = "@drupol:matrix.org";
+    name = "Pol Dellaiera";
+    source = "nixpkgs";
+  };
   dschrempf = {
     email = "dominik.schrempf@gmail.com";
     github = "dschrempf";
@@ -1525,6 +1538,12 @@
     name = "Lukas Nagel";
     source = "home-manager";
   };
+  magicquark = {
+    github = "magicquark";
+    githubId = 198001825;
+    name = "magicquark";
+    source = "nixpkgs";
+  };
   mainrs = {
     email = "5113257+mainrs@users.noreply.github.com";
     github = "mainrs";
@@ -1620,6 +1639,13 @@
     githubId = 635591;
     name = "Shahar \"Dawn\" Or";
     source = "nixpkgs";
+  };
+  mikaeladev = {
+    email = "mikaeladev@users.noreply.github.com";
+    github = "mikaeladev";
+    githubId = 100416544;
+    name = "mikaeladev";
+    source = "home-manager";
   };
   mikilio = {
     email = "official.mikilio+dev@gmail.com";

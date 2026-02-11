@@ -7,7 +7,6 @@
 
 let
   inherit (lib)
-    concatMapStringsSep
     literalExpression
     mkEnableOption
     mkIf
@@ -428,20 +427,6 @@ in
         (lib.makeBinPath cfg.extraPackages)
       ];
 
-      extraMakeWrapperLuaCArgs = optionals (resolvedExtraLuaPackages != [ ]) [
-        "--suffix"
-        "LUA_CPATH"
-        ";"
-        (concatMapStringsSep ";" luaPackages.getLuaCPath resolvedExtraLuaPackages)
-      ];
-
-      extraMakeWrapperLuaArgs = optionals (resolvedExtraLuaPackages != [ ]) [
-        "--suffix"
-        "LUA_PATH"
-        ";"
-        (concatMapStringsSep ";" luaPackages.getLuaPath resolvedExtraLuaPackages)
-      ];
-
       vimPackageInfo = neovimUtils.makeVimPackageInfo (map suppressNotVimlConfig pluginsNormalized);
 
       wrappedNeovim' = pkgs.wrapNeovimUnstable cfg.package {
@@ -462,8 +447,7 @@ in
         extraPython3Packages =
           ps: (cfg.extraPython3Packages ps) ++ (lib.concatMap (f: f ps) vimPackageInfo.pluginPython3Packages);
         neovimRcContent = cfg.extraConfig;
-        wrapperArgs =
-          cfg.extraWrapperArgs ++ extraMakeWrapperArgs ++ extraMakeWrapperLuaCArgs ++ extraMakeWrapperLuaArgs;
+        wrapperArgs = cfg.extraWrapperArgs ++ extraMakeWrapperArgs;
         wrapRc = false;
       };
     in
@@ -518,12 +502,12 @@ in
         in
 
         lib.mkMerge [
-          (lib.mkIf (
-            resolvedExtraLuaPackages != [ ]
-          ) ''package.path = "${generatedLuaPath}".. ";" .. package.path'')
-          (lib.mkIf (
-            resolvedExtraLuaPackages != [ ]
-          ) ''package.cpath = "${generatedLuaCPath}".. ";" .. package.cpath'')
+          (lib.mkIf (resolvedExtraLuaPackages != [ ]) (
+            lib.mkOrder 100 ''
+              package.path = "${generatedLuaPath}".. ";" .. package.path
+              package.cpath = "${generatedLuaCPath}".. ";" .. package.cpath
+            ''
+          ))
           (lib.mkIf (advisedLua != null) (lib.mkOrder 510 advisedLua))
           (lib.mkIf (wrappedNeovim'.initRc != "") (
             lib.mkBefore "vim.cmd [[source ${pkgs.writeText "nvim-init-home-manager.vim" wrappedNeovim'.initRc}]]"
