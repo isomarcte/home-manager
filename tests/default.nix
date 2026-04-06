@@ -115,7 +115,7 @@ let
                   if overlays == [ ] then
                     scrubbedPkgs
                   else
-                    builtins.traceVerbose "eval overlayed nixpkgs" (lib.foldr (o: p: p.extend o) scrubbedPkgs overlays);
+                    builtins.traceVerbose "eval overlaid nixpkgs" (lib.foldr (o: p: p.extend o) scrubbedPkgs overlays);
               in
               lib.mkImageMediaOverride stubbedPkgs;
           };
@@ -187,6 +187,7 @@ import nmtSrc {
           ./modules/misc/nix
           ./modules/misc/nix-remote-build
           ./modules/misc/specialisation
+          ./modules/misc/ssh-auth-sock/default.nix
           ./modules/misc/xdg
           ./modules/xresources
           # keep-sorted end

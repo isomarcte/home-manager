@@ -139,6 +139,12 @@
     github = "Dines97";
     githubId = 19364873;
   };
+  dosten = {
+    name = "Diego Saint Esteben";
+    email = "diego@saintesteben.me";
+    github = "dosten";
+    githubId = 510842;
+  };
   dsoverlord = {
     name = "Kirill Zakharov";
     email = "dsoverlord@vk.com";
@@ -278,12 +284,6 @@
     github = "kalhauge";
     githubId = 1182166;
   };
-  karaolidis = {
-    name = "Nikolaos Karaolidis";
-    email = "nick@karaolidis.com";
-    github = "karaolidis";
-    githubId = 46189100;
-  };
   kmaasrud = {
     name = "Knut Magnus Aasrud";
     email = "km@aasrud.com";
@@ -368,12 +368,6 @@
     github = "mifom";
     githubId = 23462908;
   };
-  mikaeladev = {
-    name = "mikaeladev";
-    email = "mikaeladev@users.noreply.github.com";
-    github = "mikaeladev";
-    githubId = 100416544;
-  };
   mikilio = {
     name = "mikilio";
     email = "official.mikilio+dev@gmail.com";
@@ -439,6 +433,11 @@
     email = "olmokramer@users.noreply.github.com";
     github = "olmokramer";
     githubId = 3612514;
+  };
+  oneorseveralcats = {
+    name = "oneorseveralcats";
+    github = "oneorseveralcats";
+    githubId = 170012754;
   };
   owm111 = {
     email = "7798336+owm111@users.noreply.github.com";
