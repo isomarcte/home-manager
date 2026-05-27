@@ -24,7 +24,8 @@ let
     vicmd = "bindkey -a";
   };
 
-  inherit (import ./lib.nix { inherit config lib; }) homeDir dotDirAbs dotDirRel;
+  zshLib = import ./lib.nix { inherit config lib; };
+  inherit (zshLib) homeDir dotDirAbs dotDirRel;
 in
 {
   meta.maintainers = [ lib.maintainers.khaneliman ];
@@ -127,12 +128,10 @@ in
 
         shellAliases = mkOption {
           default = { };
-          example = literalExpression ''
-            {
-              ll = "ls -l";
-              ".." = "cd ..";
-            }
-          '';
+          example = {
+            ll = "ls -l";
+            ".." = "cd ..";
+          };
           description = ''
             An attribute set that maps aliases (the top level attribute names in
             this option) to command strings or directly to build outputs.
@@ -142,12 +141,10 @@ in
 
         shellGlobalAliases = mkOption {
           default = { };
-          example = literalExpression ''
-            {
-              UUID = "$(uuidgen | tr -d \\n)";
-              G = "| grep";
-            }
-          '';
+          example = {
+            UUID = "$(uuidgen | tr -d \\n)";
+            G = "| grep";
+          };
           description = ''
             Similar to [](#opt-programs.zsh.shellAliases),
             but are substituted anywhere on a line.
@@ -246,11 +243,26 @@ in
 
         sessionVariables = mkOption {
           default = { };
-          type = types.attrs;
+          type =
+            with types;
+            lazyAttrsOf (
+              nullOr (oneOf [
+                str
+                path
+                int
+                float
+                bool
+              ])
+            );
           example = {
             MAILCHECK = 30;
           };
-          description = "Environment variables that will be set for zsh session.";
+          description = ''
+            Environment variables that will be set for zsh session.
+
+            Setting a value to `null` will skip setting the variable at all, which
+            may be useful when overriding.
+          '';
         };
 
         initContent = mkOption {
@@ -470,7 +482,7 @@ in
             . "${config.home.sessionVariablesPackage}/etc/profile.d/hm-session-vars.sh"
 
             # Only source this once
-            if [[ -z "$__HM_ZSH_SESS_VARS_SOURCED" ]]; then
+            if [[ -z "''${__HM_ZSH_SESS_VARS_SOURCED-}" ]]; then
               export __HM_ZSH_SESS_VARS_SOURCED=1
               ${envVarsStr}
             fi
@@ -478,7 +490,12 @@ in
         }
 
         {
-          home.packages = [ cfg.package ] ++ lib.optional cfg.enableCompletion pkgs.nix-zsh-completions;
+          lib.zsh = zshLib;
+
+          home.packages = [
+            cfg.package
+          ]
+          ++ lib.optional cfg.enableCompletion (lib.lowPrio pkgs.nix-zsh-completions);
 
           # NOTE: Always include "main" highlighter with normal priority.
           # Option default priority will cause `main` to get dropped by customization.

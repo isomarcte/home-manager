@@ -5,6 +5,7 @@
 {
   config,
   lib,
+  nixosConfig,
   pkgs,
   ...
 }:
@@ -13,7 +14,7 @@ let
 
   cfg = config.fonts.fontconfig;
 
-  profileDirectory = config.home.profileDirectory;
+  inherit (config.home) profileDirectory;
 
   fontConfigFileType = lib.types.submodule (
     { name, ... }:
@@ -70,13 +71,25 @@ in
     fonts.fontconfig = {
       enable = lib.mkOption {
         type = lib.types.bool;
-        default = false;
         description = ''
-          Whether to enable fontconfig configuration. This will, for
-          example, allow fontconfig to discover fonts and
-          configurations installed through
-          {var}`home.packages` and
-          {command}`nix-env`.
+          Whether to enable fontconfig configuration. This will, for example,
+          allow fontconfig to discover fonts and configurations installed through
+          {var}`home.packages` and {command}`nix-env`.
+
+          If Home Manager is installed as a NixOS submodule and
+          {var}`home-manager.useUserPackages` is enabled, this option defaults to the
+          value of NixOS' {var}`fonts.fontconfig.enable`.
+        '';
+        # On NixOS, the per-user directory inside /etc/profiles is not known by
+        # fontconfig by default.
+        default =
+          nixosConfig != null
+          && nixosConfig.home-manager.useUserPackages
+          && nixosConfig.fonts.fontconfig.enable;
+        defaultText = lib.literalExpression ''
+          nixosConfig != null
+          && nixosConfig.home-manager.useUserPackages
+          && nixosConfig.fonts.fontconfig.enable;
         '';
       };
 
@@ -337,7 +350,7 @@ in
       };
 
     xdg.configFile = lib.mapAttrs' (
-      name: config:
+      _name: config:
       lib.nameValuePair "fontconfig/conf.d/${toString config.priority}-hm-${config.label}.conf" {
         inherit (config) enable text;
         source = lib.mkIf (config.source != null) config.source;

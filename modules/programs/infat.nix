@@ -26,24 +26,22 @@ in
       enable = lib.mkEnableOption "infat";
       package = lib.mkPackageOption pkgs "infat" { nullable = true; };
       settings = lib.mkOption {
-        type = tomlFormat.type;
+        inherit (tomlFormat) type;
         default = { };
-        example = lib.literalExpression ''
-          {
-            extensions = {
-              md = "TextEdit";
-              html = "Safari";
-              pdf = "Preview";
-            };
-            schemes = {
-              mailto = "Mail";
-              web = "Safari";
-            };
-            types = {
-              plain-text = "VSCode";
-            };
-          }
-        '';
+        example = {
+          extensions = {
+            md = "TextEdit";
+            html = "Safari";
+            pdf = "Preview";
+          };
+          schemes = {
+            mailto = "Mail";
+            web = "Safari";
+          };
+          types = {
+            plain-text = "VSCode";
+          };
+        };
         description = ''
           Configuration written to
           {file}`$XDG_CONFIG_HOME/infat/config.toml`.

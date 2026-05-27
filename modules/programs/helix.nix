@@ -55,23 +55,24 @@ in
     };
 
     settings = mkOption {
-      type = tomlFormat.type;
+      inherit (tomlFormat) type;
       default = { };
-      example = literalExpression ''
-        {
-          theme = "base16";
-          editor = {
-            line-number = "relative";
-            lsp.display-messages = true;
-          };
-          keys.normal = {
-            space.space = "file_picker";
-            space.w = ":w";
-            space.q = ":q";
-            esc = [ "collapse_selection" "keep_primary_selection" ];
-          };
-        }
-      '';
+      example = {
+        theme = "base16";
+        editor = {
+          line-number = "relative";
+          lsp.display-messages = true;
+        };
+        keys.normal = {
+          space.space = "file_picker";
+          space.w = ":w";
+          space.q = ":q";
+          esc = [
+            "collapse_selection"
+            "keep_primary_selection"
+          ];
+        };
+      };
       description = ''
         Configuration written to
         {file}`$XDG_CONFIG_HOME/helix/config.toml`.
@@ -233,6 +234,9 @@ in
 
     xdg.configFile =
       let
+        pkillPrefix = if pkgs.stdenv.hostPlatform.isDarwin then "/usr" else pkgs.procps;
+        onChange = "${pkillPrefix}/bin/pkill -USR1 -u $USER -x '(hx|\\.hx-wrapped)' || true";
+
         settings =
           let
             hasSettings = cfg.settings != { };
@@ -240,6 +244,7 @@ in
           in
           {
             "helix/config.toml" = mkIf (hasSettings || hasExtraConfig) {
+              inherit onChange;
               source =
                 let
                   configFile = tomlFormat.generate "config.toml" cfg.settings;
@@ -252,6 +257,7 @@ in
                 '';
             };
             "helix/languages.toml" = mkIf (cfg.languages != { }) {
+              inherit onChange;
               source = tomlFormat.generate "helix-languages-config" cfg.languages;
             };
             "helix/ignore" = mkIf (cfg.ignores != [ ]) {
@@ -262,6 +268,7 @@ in
         themes = lib.mapAttrs' (
           n: v:
           lib.nameValuePair "helix/themes/${n}.toml" {
+            inherit onChange;
             source =
               if lib.isString v then
                 pkgs.writeText "helix-theme-${n}" v

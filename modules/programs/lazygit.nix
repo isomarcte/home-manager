@@ -29,19 +29,20 @@ in
     package = lib.mkPackageOption pkgs "lazygit" { nullable = true; };
 
     settings = lib.mkOption {
-      type = yamlFormat.type;
+      inherit (yamlFormat) type;
       default = { };
       defaultText = lib.literalExpression "{ }";
-      example = lib.literalExpression ''
-        {
-          gui.theme = {
-            lightTheme = true;
-            activeBorderColor = [ "blue" "bold" ];
-            inactiveBorderColor = [ "black" ];
-            selectedLineBgColor = [ "default" ];
-          };
-        }
-      '';
+      example = {
+        gui.theme = {
+          lightTheme = true;
+          activeBorderColor = [
+            "blue"
+            "bold"
+          ];
+          inactiveBorderColor = [ "black" ];
+          selectedLineBgColor = [ "default" ];
+        };
+      };
       description = ''
         Configuration written to
         {file}`$XDG_CONFIG_HOME/lazygit/config.yml`
@@ -88,7 +89,7 @@ in
             "~/.lazygit/newdir";
 
         bashIntegration = ''
-          ${cfg.shellWrapperName}() {
+          function ${cfg.shellWrapperName}() {
               export LAZYGIT_NEW_DIR_FILE=${lazygitNewDirFilePath}
               command lazygit "$@"
               if [ -f $LAZYGIT_NEW_DIR_FILE ]; then
