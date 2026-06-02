@@ -313,7 +313,7 @@ function doInit() {
     fi
 
     local homeManagerUrl="github:nix-community/home-manager"
-    local nixpkgsUrl="github:nixos/nixpkgs/nixos-unstable"
+    local nixpkgsUrl="github:nixos/nixpkgs/nixpkgs-unstable"
 
     while (( $# > 0 )); do
         local opt="$1"
@@ -1279,7 +1279,7 @@ while [[ $# -gt 0 ]]; do
             export VERBOSE=1
             ;;
         --version)
-            echo 26.05-pre
+            echo 26.11-pre
             exit 0
             ;;
         *)
