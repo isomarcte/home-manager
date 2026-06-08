@@ -69,7 +69,9 @@ in
           extraAccounts = mkOption {
             type = confSection;
             default = { };
-            example = literalExpression ''{ source = "maildir://~/Maildir/example"; }'';
+            example = {
+              source = "maildir://~/Maildir/example";
+            };
             description = ''
               Extra config added to the configuration section for this account in
               {file}`$HOME/.config/aerc/accounts.conf`.
@@ -91,7 +93,11 @@ in
           extraConfig = mkOption {
             type = confSections;
             default = { };
-            example = literalExpression "{ ui = { sidebar-width = 25; }; }";
+            example = {
+              ui = {
+                sidebar-width = 25;
+              };
+            };
             description = ''
               Config specific to this account, added to {file}`$HOME/.config/aerc/aerc.conf`.
               Aerc only supports per-account UI configuration.
@@ -145,7 +151,7 @@ in
   };
 
   mkAccount =
-    name: account:
+    _name: account:
     let
       nullOrMap = f: v: if v == null then v else f v;
 
@@ -168,7 +174,7 @@ in
           "?"
           + builtins.concatStringsSep "&" (
             lib.attrsets.mapAttrsToList (k: v: k + "=" + lib.strings.escapeURL v) (
-              lib.attrsets.filterAttrs (k: v: v != null) params
+              lib.attrsets.filterAttrs (_k: v: v != null) params
             )
           )
         else
@@ -193,7 +199,6 @@ in
             userName,
             imap,
             passwordCommand,
-            aerc,
             ...
           }@cfg:
           let
@@ -210,11 +215,12 @@ in
               else
                 "imap+insecure";
 
+            userName' = lib.strings.escapeURL userName;
             port' = optPort imap.port;
 
           in
           {
-            source = "${protocol}://${userName}@${imap.host}${port'}${oauthParams'}";
+            source = "${protocol}://${userName'}@${imap.host}${port'}${oauthParams'}";
           }
           // optPwCmd "source" passwordCommand;
 
@@ -239,15 +245,16 @@ in
               else
                 "smtp+insecure${loginMethod'}";
 
+            userName' = lib.strings.escapeURL userName;
             port' = optPort smtp.port;
 
           in
           {
-            outgoing = "${protocol}://${userName}@${smtp.host}${port'}${oauthParams'}";
+            outgoing = "${protocol}://${userName'}@${smtp.host}${port'}${oauthParams'}";
           }
           // optPwCmd "outgoing" passwordCommand;
 
-        msmtp = cfg: {
+        msmtp = _cfg: {
           outgoing = "msmtpq --read-envelope-from --read-recipients";
         };
 

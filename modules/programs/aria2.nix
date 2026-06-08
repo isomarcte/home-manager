@@ -26,7 +26,7 @@ in
     package = lib.mkPackageOption pkgs "aria2" { nullable = true; };
 
     settings = lib.mkOption {
-      type = keyValueFormat.type;
+      inherit (keyValueFormat) type;
       default = { };
       description = ''
         Options to add to {file}`aria2.conf` file.
@@ -34,15 +34,13 @@ in
         {manpage}`aria2c(1)`
         for options.
       '';
-      example = lib.literalExpression ''
-        {
-          listen-port = 60000;
-          dht-listen-port = 60000;
-          seed-ratio = 1.0;
-          max-upload-limit = "50K";
-          ftp-pasv = true;
-        }
-      '';
+      example = {
+        listen-port = 60000;
+        dht-listen-port = 60000;
+        seed-ratio = 1.0;
+        max-upload-limit = "50K";
+        ftp-pasv = true;
+      };
     };
 
     systemd.enable = lib.mkEnableOption "Aria2 systemd integration";

@@ -7,6 +7,7 @@
 let
   inherit (lib)
     literalExpression
+    mkChangedOptionModule
     mkOption
     nameValuePair
     optionalAttrs
@@ -15,6 +16,8 @@ let
   cfg = config.programs.claude-code;
 
   jsonFormat = pkgs.formats.json { };
+
+  upstreamConfigDir = "${config.home.homeDirectory}/.claude";
 
   mkMcpServer =
     server:
@@ -55,6 +58,24 @@ in
 {
   meta.maintainers = [ lib.maintainers.khaneliman ];
 
+  imports = [
+    (mkChangedOptionModule
+      [ "programs" "claude-code" "memory" "text" ]
+      [ "programs" "claude-code" "context" ]
+      (config: lib.getAttrFromPath [ "programs" "claude-code" "memory" "text" ] config)
+    )
+    (mkChangedOptionModule
+      [ "programs" "claude-code" "memory" "source" ]
+      [ "programs" "claude-code" "context" ]
+      (config: lib.getAttrFromPath [ "programs" "claude-code" "memory" "source" ] config)
+    )
+    (mkChangedOptionModule
+      [ "programs" "claude-code" "skillsDir" ]
+      [ "programs" "claude-code" "skills" ]
+      (config: lib.getAttrFromPath [ "programs" "claude-code" "skillsDir" ] config)
+    )
+  ];
+
   options.programs.claude-code = {
     enable = lib.mkEnableOption "Claude Code, Anthropic's official CLI";
 
@@ -73,11 +94,27 @@ in
       description = ''
         Whether to integrate the MCP servers config from
         {option}`programs.mcp.servers` into
-        {option}`programs.opencode.settings.mcp`.
+        {option}`programs.claude-code.mcpServers`.
 
         Note: Settings defined in {option}`programs.mcp.servers` are merged
         with {option}`programs.claude-code.mcpServers`, with Claude Code servers
         taking precedence.
+      '';
+    };
+
+    configDir = mkOption {
+      type = lib.types.str;
+      default = upstreamConfigDir;
+      defaultText = literalExpression ''"''${config.home.homeDirectory}/.claude"'';
+      example = literalExpression ''"''${config.xdg.configHome}/claude"'';
+      description = ''
+        Directory holding Claude Code's configuration files.
+
+        Defaults to {file}`~/.claude`, matching the upstream
+        {command}`claude` CLI default. The {env}`CLAUDE_CONFIG_DIR`
+        environment variable is exported automatically whenever the
+        directory differs from this default so the CLI reads
+        configuration from the same location.
       '';
     };
 
@@ -137,6 +174,23 @@ in
       description = "JSON configuration for Claude Code settings.json";
     };
 
+    context = mkOption {
+      type = lib.types.either lib.types.lines lib.types.path;
+      default = "";
+      description = ''
+        Global context for Claude Code.
+
+        The value is either:
+        - Inline content as a string
+        - A path to a file containing the content
+
+        The configured content is written to
+        {file}`CLAUDE.md` inside {option}`programs.claude-code.configDir`
+        (default {file}`~/.claude/CLAUDE.md`).
+      '';
+      example = literalExpression "./claude-memory.md";
+    };
+
     plugins = lib.mkOption {
       type = with lib.types; listOf (either package path);
       default = [ ];
@@ -188,7 +242,8 @@ in
         The attribute name becomes the agent filename, and the value is either:
         - Inline content as a string with frontmatter
         - A path to a file containing the agent content with frontmatter
-        Agents are stored in .claude/agents/ directory.
+        Agents are stored in the {file}`agents/` subdirectory of
+        {option}`programs.claude-code.configDir`.
       '';
       example = literalExpression ''
         {
@@ -213,7 +268,8 @@ in
         The attribute name becomes the command filename, and the value is either:
         - Inline content as a string
         - A path to a file containing the command content
-        Commands are stored in .claude/commands/ directory.
+        Commands are stored in the {file}`commands/` subdirectory of
+        {option}`programs.claude-code.configDir`.
       '';
       example = literalExpression ''
         {
@@ -252,7 +308,8 @@ in
       description = ''
         Custom hooks for Claude Code.
         The attribute name becomes the hook filename, and the value is the hook script content.
-        Hooks are stored in .claude/hooks/ directory.
+        Hooks are stored in the {file}`hooks/` subdirectory of
+        {option}`programs.claude-code.configDir`.
       '';
       example = {
         pre-edit = ''
@@ -266,44 +323,15 @@ in
       };
     };
 
-    memory = {
-      text = mkOption {
-        type = lib.types.nullOr lib.types.lines;
-        default = null;
-        description = ''
-          Inline memory content for CLAUDE.md.
-          This option is mutually exclusive with memory.source.
-        '';
-        example = ''
-          # Project Memory
-
-          ## Current Task
-          Implementing enhanced claude-code module for home-manager.
-
-          ## Key Files
-          - claude-code.nix: Main module implementation
-        '';
-      };
-
-      source = mkOption {
-        type = lib.types.nullOr lib.types.path;
-        default = null;
-        description = ''
-          Path to a file containing memory content for CLAUDE.md.
-          This option is mutually exclusive with memory.text.
-        '';
-        example = literalExpression "./claude-memory.md";
-      };
-    };
-
     rules = mkContentOption {
       description = ''
         Modular rule files for Claude Code.
         The attribute name becomes the rule filename, and the value is either:
         - Inline content as a string
         - A path to a file containing the rule content
-        Rules are stored in .claude/rules/ directory.
-        All markdown files in .claude/rules/ are automatically loaded as project memory.
+        Rules are stored in the {file}`rules/` subdirectory of
+        {option}`programs.claude-code.configDir`. All markdown files in
+        that directory are automatically loaded as project memory.
       '';
       example = literalExpression ''
         {
@@ -327,8 +355,10 @@ in
     rulesDir = mkDirOption {
       description = ''
         Path to a directory containing rule files for Claude Code.
-        Rule files from this directory will be symlinked to .claude/rules/.
-        All markdown files in this directory are automatically loaded as project memory.
+        Rule files from this directory will be symlinked into the
+        {file}`rules/` subdirectory of
+        {option}`programs.claude-code.configDir`. All markdown files in
+        this directory are automatically loaded as project memory.
       '';
       example = literalExpression "./rules";
     };
@@ -336,7 +366,9 @@ in
     agentsDir = mkDirOption {
       description = ''
         Path to a directory containing agent files for Claude Code.
-        Agent files from this directory will be symlinked to .claude/agents/.
+        Agent files from this directory will be symlinked into the
+        {file}`agents/` subdirectory of
+        {option}`programs.claude-code.configDir`.
       '';
       example = literalExpression "./agents";
     };
@@ -344,7 +376,9 @@ in
     commandsDir = mkDirOption {
       description = ''
         Path to a directory containing command files for Claude Code.
-        Command files from this directory will be symlinked to .claude/commands/.
+        Command files from this directory will be symlinked into the
+        {file}`commands/` subdirectory of
+        {option}`programs.claude-code.configDir`.
       '';
       example = literalExpression "./commands";
     };
@@ -352,7 +386,9 @@ in
     hooksDir = mkDirOption {
       description = ''
         Path to a directory containing hook files for Claude Code.
-        Hook files from this directory will be symlinked to .claude/hooks/.
+        Hook files from this directory will be symlinked into the
+        {file}`hooks/` subdirectory of
+        {option}`programs.claude-code.configDir`.
       '';
       example = literalExpression "./hooks";
     };
@@ -364,7 +400,9 @@ in
         The value is either:
           - Inline content as a string
           - A path to a file
-        In both cases, the contents will be written to .claude/output-styles/<name>.md
+        In both cases, the contents will be written to
+        {file}`output-styles/<name>.md` inside
+        {option}`programs.claude-code.configDir`.
       '';
       example = literalExpression ''
         {
@@ -378,13 +416,35 @@ in
       '';
     };
 
-    skills = mkContentOption {
+    skills = mkOption {
+      type = lib.types.either (lib.types.attrsOf (
+        lib.types.oneOf [
+          lib.types.lines
+          lib.types.path
+          lib.types.str
+        ]
+      )) lib.types.path;
+      default = { };
       description = ''
         Custom skills for Claude Code.
-        The attribute name becomes the skill directory name, and the value is either:
-        - Inline content as a string (creates .claude/skills/<name>/SKILL.md)
-        - A path to a file (creates .claude/skills/<name>/SKILL.md)
-        - A path to a directory (creates .claude/skills/<name>/ with all files)
+
+        This option can be either:
+        - An attribute set defining skills
+        - A path to a directory containing skill folders
+
+        If an attribute set is used, the attribute name becomes the
+        skill directory name, and the value is either:
+        - Inline content as a string (creates {file}`skills/<name>/SKILL.md`)
+        - A path to a file (creates {file}`skills/<name>/SKILL.md`)
+        - A path to a directory (creates {file}`skills/<name>/` with all files)
+
+        This also accepts Nix store paths, for example a skill directory
+        from a package.
+
+        If a path is used, it is expected to contain one folder per
+        skill name, each containing a {file}`SKILL.md`. The directory is
+        symlinked into the {file}`skills/` subdirectory of
+        {option}`programs.claude-code.configDir`.
       '';
       example = literalExpression ''
         {
@@ -409,17 +469,11 @@ in
                 text = pdf.pages[0].extract_text()
             ```
           ''';
+
+          # A skill can also be a subdirectory within a package source (store path)
+          beads = "''${pkgs.beads.src}/claude-plugin/skills/beads";
         }
       '';
-    };
-
-    skillsDir = mkDirOption {
-      description = ''
-        Path to a directory containing skill directories for Claude Code.
-        Each skill directory should contain a SKILL.md entrypoint file.
-        Skill directories from this path will be symlinked to .claude/skills/.
-      '';
-      example = literalExpression "./skills";
     };
 
     lspServers = mkOption {
@@ -497,17 +551,23 @@ in
       mkMarkdownEntries =
         subdir: attrs:
         lib.mapAttrs' (
-          name: content: nameValuePair ".claude/${subdir}/${name}.md" (mkSourceEntry content)
+          name: content: nameValuePair "${cfg.configDir}/${subdir}/${name}.md" (mkSourceEntry content)
         ) attrs;
 
-      mkTextEntries =
-        subdir: attrs:
-        lib.mapAttrs' (name: content: nameValuePair ".claude/${subdir}/${name}" { text = content; }) attrs;
+      mkHookEntries =
+        attrs:
+        lib.mapAttrs' (
+          name: content:
+          nameValuePair "${cfg.configDir}/hooks/${name}" {
+            text = content;
+            executable = true;
+          }
+        ) attrs;
 
       mkRecursiveDirAttrs =
         subdir: dir:
         optionalAttrs (dir != null) {
-          ".claude/${subdir}" = {
+          "${cfg.configDir}/${subdir}" = {
             source = dir;
             recursive = true;
           };
@@ -515,15 +575,17 @@ in
 
       mkSkillEntry =
         name: content:
-        if lib.isPath content && lib.pathIsDirectory content then
-          nameValuePair ".claude/skills/${name}" {
+        if lib.hm.strings.isPathLike content && lib.pathIsDirectory content then
+          nameValuePair "${cfg.configDir}/skills/${name}" {
             source = content;
             recursive = true;
           }
         else
-          nameValuePair ".claude/skills/${name}/SKILL.md" (mkSourceEntry content);
+          nameValuePair "${cfg.configDir}/skills/${name}/SKILL.md" (
+            if lib.hm.strings.isPathLike content then { source = content; } else { text = content; }
+          );
 
-      mkMarketplaceEntry = name: content: {
+      mkMarketplaceEntry = _name: content: {
         source = {
           source = "directory";
           path = content;
@@ -547,7 +609,6 @@ in
             "agents"
             "commands"
             "hooks"
-            "skills"
           ];
 
           mkExclusiveAssertion = inline: {
@@ -563,8 +624,8 @@ in
             message = "`programs.claude-code.package` cannot be null when `mcpServers`, `lspServers`, `enableMcpIntegration`, or `plugins` is configured";
           }
           {
-            assertion = !(cfg.memory.text != null && cfg.memory.source != null);
-            message = "Cannot specify both `programs.claude-code.memory.text` and `programs.claude-code.memory.source`";
+            assertion = !lib.hm.strings.isPathLike cfg.skills || lib.pathIsDirectory cfg.skills;
+            message = "`programs.claude-code.skills` must be a directory when set to a path";
           }
         ]
         ++ map mkExclusiveAssertion exclusiveInlineDirNames;
@@ -621,9 +682,13 @@ in
       home = {
         packages = lib.mkIf (cfg.package != null) [ cfg.finalPackage ];
 
+        sessionVariables = lib.mkIf (cfg.configDir != upstreamConfigDir) {
+          CLAUDE_CONFIG_DIR = cfg.configDir;
+        };
+
         file = lib.mkMerge [
           (lib.mkIf (cfg.settings != { } || cfg.marketplaces != { }) {
-            ".claude/settings.json".source = jsonFormat.generate "claude-code-settings.json" (
+            "${cfg.configDir}/settings.json".source = jsonFormat.generate "claude-code-settings.json" (
               cfg.settings
               // {
                 "$schema" = "https://json.schemastore.org/claude-code-settings.json";
@@ -633,14 +698,18 @@ in
               }
             );
           })
-          (lib.mkIf (cfg.memory.text != null) {
-            ".claude/CLAUDE.md".text = cfg.memory.text;
-          })
-          (lib.mkIf (cfg.memory.source != null) {
-            ".claude/CLAUDE.md".source = cfg.memory.source;
-          })
+          (
+            if lib.isPath cfg.context then
+              {
+                "${cfg.configDir}/CLAUDE.md".source = cfg.context;
+              }
+            else
+              (lib.mkIf (cfg.context != "") {
+                "${cfg.configDir}/CLAUDE.md".text = cfg.context;
+              })
+          )
           (lib.mkIf (cfg.marketplaces != { }) {
-            ".claude/plugins/known_marketplaces.json".source =
+            "${cfg.configDir}/plugins/known_marketplaces.json".source =
               jsonFormat.generate "claude-code-known-marketplaces.json" (
                 lib.mapAttrs mkInstalledMarketplaceEntry cfg.marketplaces
               );
@@ -652,9 +721,14 @@ in
           (mkRecursiveDirAttrs "commands" cfg.commandsDir)
           (mkRecursiveDirAttrs "hooks" cfg.hooksDir)
           (mkRecursiveDirAttrs "rules" cfg.rulesDir)
-          (mkRecursiveDirAttrs "skills" cfg.skillsDir)
-          (mkTextEntries "hooks" cfg.hooks)
-          (lib.mapAttrs' mkSkillEntry cfg.skills)
+          (lib.mkIf (lib.hm.strings.isPathLike cfg.skills) {
+            "${cfg.configDir}/skills" = {
+              source = cfg.skills;
+              recursive = true;
+            };
+          })
+          (mkHookEntries cfg.hooks)
+          (lib.optionalAttrs (builtins.isAttrs cfg.skills) (lib.mapAttrs' mkSkillEntry cfg.skills))
           (mkMarkdownEntries "output-styles" cfg.outputStyles)
         ];
       };

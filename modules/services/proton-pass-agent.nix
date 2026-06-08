@@ -74,15 +74,19 @@ in
     lib.mkIf cfg.enable {
       home.packages = [ cfg.package ];
 
-      sshAuthSock.initialization = {
-        bash = ''export SSH_AUTH_SOCK="${socketPath}"'';
-        fish = ''set -x SSH_AUTH_SOCK "${socketPath}"'';
-        nushell = "$env.SSH_AUTH_SOCK = ${
-          if pkgs.stdenv.isDarwin then
-            ''$"(${lib.getExe pkgs.getconf} DARWIN_USER_TEMP_DIR)/${cfg.socket}"''
-          else
-            ''$"($env.XDG_RUNTIME_DIR)/${cfg.socket}"''
-        }";
+      sshAuthSock = {
+        enable = true;
+        initialization = {
+          bash = ''export SSH_AUTH_SOCK="${socketPath}"'';
+          fish = ''set -x SSH_AUTH_SOCK "${socketPath}"'';
+          nushell = "$env.SSH_AUTH_SOCK = ${
+            if pkgs.stdenv.isDarwin then
+              ''$"(${lib.getExe pkgs.getconf} DARWIN_USER_TEMP_DIR)/${cfg.socket}"''
+            else
+              ''$"($env.XDG_RUNTIME_DIR)/${cfg.socket}"''
+          }";
+        };
+        systemd.socketProviderUnit = "proton-pass-agent.service";
       };
 
       systemd.user.services.proton-pass-agent = {
@@ -93,6 +97,7 @@ in
         };
         Service = {
           ExecStart = lib.concatStringsSep " " cmd;
+          Restart = "on-failure";
           KeyringMode = "shared";
         };
       };
@@ -105,10 +110,7 @@ in
             "-c"
             (lib.concatStringsSep " " cmd)
           ];
-          KeepAlive = {
-            Crashed = true;
-            SuccessfulExit = false;
-          };
+          KeepAlive = true;
           ProcessType = "Background";
           RunAtLoad = true;
           StandardOutPath = "${config.home.homeDirectory}/Library/Logs/Proton Pass CLI/ssh-agent-stdout.log";

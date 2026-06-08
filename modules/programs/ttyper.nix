@@ -6,7 +6,6 @@
 }:
 let
   inherit (lib)
-    literalExpression
     mkIf
     mkOption
     ;
@@ -24,23 +23,21 @@ in
     package = lib.mkPackageOption pkgs "ttyper" { nullable = true; };
 
     settings = mkOption {
-      type = tomlFormat.type;
+      inherit (tomlFormat) type;
       default = { };
       description = ''
         Configuration written to {file}`$XDG_CONFIG_HOME/ttyper/config.toml`.
         See <https://github.com/max-niederman/ttyper> for all available options,
         including supported languages and theme keys.
       '';
-      example = literalExpression ''
-        {
-          default_language = "english200";
-          theme = {
-            border_type = "rounded";
-            prompt_correct = "green";
-            prompt_incorrect = "red";
-          };
-        }
-      '';
+      example = {
+        default_language = "english200";
+        theme = {
+          border_type = "rounded";
+          prompt_correct = "green";
+          prompt_incorrect = "red";
+        };
+      };
     };
   };
 

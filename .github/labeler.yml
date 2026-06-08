@@ -1,3 +1,6 @@
+"release":
+  - base-branch:
+      - '^release-.*'
 "ai":
   - changed-files:
       - any-glob-to-any-file:
@@ -7,7 +10,7 @@
           - modules/programs/claude-code.nix
           - modules/programs/codex.nix
           - modules/programs/fabric-ai.nix
-          - modules/programs/gemini-cli.nix
+          - modules/programs/antigravity-cli.nix
           - modules/programs/mcp.nix
           - modules/programs/mistral-vibe.nix
           - modules/programs/mods.nix
@@ -660,7 +663,6 @@
           - modules/programs/fuzzel.nix
           - modules/programs/hyprlock.nix
           - modules/programs/kickoff.nix
-          - modules/programs/niriswitcher.nix
           - modules/programs/onagre.nix
           - modules/programs/sway-easyfocus.nix
           - modules/programs/swaylock.nix

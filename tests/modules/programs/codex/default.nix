@@ -3,6 +3,7 @@
   codex-settings-toml-prefer-xdg-directories = ./settings-toml-prefer-xdg-directories.nix;
   codex-settings-yaml = ./settings-yaml.nix;
   codex-empty-settings = ./empty-settings.nix;
+  codex-legacy-custom-instructions = ./legacy-custom-instructions.nix;
   codex-mcp-integration = ./mcp-integration.nix;
   codex-mcp-integration-with-override = ./mcp-integration-with-override.nix;
   codex-rules = ./rules.nix;
@@ -11,5 +12,6 @@
   codex-skills-inline-legacy-path = ./skills-inline-legacy-path.nix;
   codex-skills-dir = ./skills-dir.nix;
   codex-skills-store-path = ./skills-store-path.nix;
+  codex-skills-store-path-dir = ./skills-store-path-dir.nix;
   codex-skills-path-not-directory = ./skills-path-not-directory.nix;
 }
